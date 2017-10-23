@@ -1,0 +1,201 @@
+import 'lobjc.so' as objc;
+
+var NSObject = objc.NSClassFromString('NSObject');
+var NSString = objc.NSClassFromString('NSString');
+var NSColor = objc.NSClassFromString('NSColor');
+var NSFont = objc.NSClassFromString('NSFont');
+var NSWindow = objc.NSClassFromString('NSWindow');
+var NSScrollView = objc.NSClassFromString('NSScrollView');
+var NSView = objc.NSClassFromString('NSView');
+var NSButton = objc.NSClassFromString('NSButton');
+var NSApplication = objc.NSClassFromString('NSApplication');
+var NSWindowController = objc.NSClassFromString('NSWindowController');
+var NSURL = objc.NSClassFromString('NSURL');
+var NSMenu = objc.NSClassFromString('NSMenu');
+var NSMenuItem = objc.NSClassFromString('NSMenuItem');
+var NSURLRequest = objc.NSClassFromString('NSURLRequest');
+var WKWebView = objc.NSClassFromString('WKWebView');
+var WKWebViewConfiguration = objc.NSClassFromString('WKWebViewConfiguration');
+var NSTextView = objc.NSClassFromString('NSTextView');
+var NSLayoutConstraint = objc.NSClassFromString('NSLayoutConstraint');
+var NSTextStorage = objc.NSClassFromString('NSTextStorage');
+var NSMutableAttributedString = objc.NSClassFromString('NSMutableAttributedString');
+var NSRegularExpression = objc.NSClassFromString('NSRegularExpression');
+var NSOpenPanel = objc.NSClassFromString('NSOpenPanel');
+
+var i = 0;
+@objc.protocol('NSWindowDelegate')
+class WindowDelegate(NSObject) {
+	def windowDidResize_(var n) {
+	}
+}
+
+class WindowController(NSWindowController) {
+}
+
+class HighlightingTextStorage(NSTextStorage) {
+        def __init__() {
+                self.attributeString = NSMutableAttributedString();
+        }
+
+        def replaceCharactersInRange_withString_(var a, var b) {
+                self.attributeString.replaceCharactersInRange_withString_(a, b);
+                self.edited_range_changeInLength_(2, a, b.__length__() - a.length);
+        }
+
+        def string() {
+                return self.attributeString.string();
+        }
+
+	def setAttributes_range_(var a, var b) {
+		self.attributeString.setAttributes_range_(a, b);
+                self.edited_range_changeInLength_(1, b, 0);
+	}
+
+	def highlighting(var pattern, var color) {
+		var regex = NSRegularExpression.regularExpressionWithPattern_options_error_(pattern, 0, nil);
+		var range = self.string().paragraphRangeForRange_(self.editedRange());
+
+		var matches = regex.matchesInString_options_range_(self.string(), 0, range);
+		var count = matches.count();
+		for (var i = 0; i < count; i+=1) {
+			var match = matches.objectAtIndex_(i);
+			self.beginEditing();
+			self.addAttribute_value_range_(
+				objc.NSForegroundColorAttributeName,
+				color,
+				match.range());
+			self.endEditing();
+		}
+	}
+
+
+	def attributesAtIndex_effectiveRange_(var a, var b) {
+		return self.attributeString.attributesAtIndex_effectiveRange_(a, b);
+	}
+
+	def processEditing() {
+		super().processEditing();
+
+		self.beginEditing();
+		self.addAttribute_value_range_(
+			objc.NSFontAttributeName,
+			NSFont.fontWithName_size_("Courier", 18),
+			self.editedRange());
+		self.endEditing();
+
+		self.highlighting('/\\*.*?\\*/',
+			NSColor.colorWithRed_green_blue_alpha_(0x1D/255.0, 0x87/255.0, 0x11/255.0, 1.0));
+
+		self.highlighting('(".*?")|(\'.*?\')',
+			NSColor.colorWithRed_green_blue_alpha_(0xC8/255.0, 0x1B/255.0, 0x28/255.0, 1.0));
+
+		self.highlighting('[0-9]*\\.{0,1}[0-9]+?',
+			NSColor.colorWithRed_green_blue_alpha_(0x34/255.0, 0x0D/255.0, 0xD4/255.0, 1.0));
+
+		self.highlighting('(if|var|def|class|return)[ \\(]',
+			NSColor.colorWithRed_green_blue_alpha_(0xB3/255.0, 0x09/255.0, 0xA1/255.0, 1.0));
+	}
+}
+
+@objc.protocol('NSTextViewDelegate')
+class TextViewDelegate(NSObject) {
+	def textView_shouldChangeTextInRange_replacementString_(var a, var b, var c) {
+		return true;
+	}
+}
+
+class TextView(NSTextView) {
+}
+
+@objc.protocol('NSApplicationDelegate')
+@objc.protocol('NSOpenSavePanelDelegate')
+class Delegate(NSObject) {
+
+	def panelSelectionDidChange_(var sender) {
+		var url = sender.URLs().objectAtIndex_(0);
+		var content = NSString.stringWithContentsOfURL_encoding_error_(url, objc.NSUTF8StringEncoding, nil);
+		print(content);
+		self.textView.setString_(content);
+		self.textView.sizeToFit();
+	}
+
+	def Open() {
+		var panel = NSOpenPanel.openPanel();
+		panel.setCanChooseDirectories_(true);
+		panel.setCanChooseFiles_(true);
+		panel.setDelegate_(self);
+		panel.runModal();
+	}
+
+	def applicationDidFinishLaunching_(var aNotification) {
+		var fileMenu = NSMenu(title = "File");
+		var openMenuItem = NSMenuItem(title = "Open", action=objc.NSSelectorFromString('Open'), keyEquivalent="");
+		openMenuItem.setTarget_(self);
+		openMenuItem.setEnabled_(true);
+		var fileMenuItem = NSMenuItem(title = "File", action=objc.NSSelectorFromString('File'), keyEquivalent="");
+		fileMenuItem.setTarget_(self);
+		fileMenuItem.setEnabled_(true);
+		fileMenu.addItem_(openMenuItem);
+		fileMenu.setAutoenablesItems_(false);
+		fileMenuItem.setSubmenu_(fileMenu);
+
+		var mainMenu = NSMenu();
+		mainMenu.setAutoenablesItems_(false);
+		mainMenu.addItem_(fileMenuItem);
+		objc.NSApp().setMainMenu_(mainMenu);
+
+		self.window = NSWindow(
+			contentRect = objc.CGRectMake(10, 10, 800, 600),
+			styleMask = objc.NSWindowStyleMaskMiniaturizable |
+					objc.NSWindowStyleMaskTitled |
+					objc.NSWindowStyleMaskClosable |
+					objc.NSWindowStyleMaskResizable,
+			backing = objc.NSBackingStoreBuffered,
+			defer = false);
+
+		self.windowDelegate = WindowDelegate();
+		self.window.setTitle_("demo");
+		self.window.setDelegate_(self.windowDelegate);
+		self.windowController = WindowController(window=self.window);
+		self.windowController.showWindow_(self);
+
+		self.scrollView = NSScrollView(frame = self.window.contentView().bounds()); 
+		var contentSize = self.scrollView.contentSize();
+
+		self.scrollView.setBorderType_(0);
+		self.scrollView.setHasVerticalScroller_(true);
+		self.scrollView.setHasHorizontalScroller_(false);
+		self.scrollView.setAutoresizingMask_(objc.NSViewWidthSizable | objc.NSViewHeightSizable);
+		self.window.contentView().addSubview_(self.scrollView);
+		
+		self.textView = TextView(frame = self.window.contentView().bounds());
+		self.textView.setMinSize_(objc.CGSizeMake(0.0, contentSize.height));
+		self.textView.setAutoresizingMask_(objc.NSViewWidthSizable);
+		self.textView.setMaxSize_(objc.CGSizeMake(100000, 1000000));
+		self.textView.setVerticallyResizable_(true);
+		self.textView.setHorizontallyResizable_(false);
+		self.textView.textContainer().setContainerSize_(objc.CGSizeMake(contentSize.width, 1000000));
+		self.textView.textContainer().setWidthTracksTextView_(true);
+		self.textViewDelegate = TextViewDelegate();
+		self.textView.setDelegate_(self.textViewDelegate);
+		self.windowDelegate.textView = self.textView;
+		self.scrollView.setDocumentView_(self.textView);
+		
+		self.window.makeFirstResponder_(self.textView);
+		self.windowController.showWindow_(self.windowController);
+
+		self.textStorage = HighlightingTextStorage();
+		self.textStorage.addLayoutManager_(self.textView.layoutManager());
+		self.textStorage.replaceCharactersInRange_withString_(objc.NSMakeRange(0, 0), '');
+	}
+	
+	def applicationShouldTerminateAfterLastWindowClosed_(var app) {
+		return true;
+	}
+}
+
+var delegate = Delegate();
+var app = NSApplication.sharedApplication();
+app.setDelegate_(delegate);
+app.run();

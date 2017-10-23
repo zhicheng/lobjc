@@ -1,0 +1,117 @@
+import 'lobjc.so' as objc;
+
+var NSObject = objc.NSClassFromString('NSObject');
+var NSURL = objc.NSClassFromString('NSURL');
+var NSURLRequest = objc.NSClassFromString('NSURLRequest');
+var NSString = objc.NSClassFromString('NSString');
+var NSWindow = objc.NSClassFromString('NSWindow');
+var NSWindowController = objc.NSClassFromString('NSWindowController');
+var NSLayoutConstraint = objc.NSClassFromString('NSLayoutConstraint');
+var WKWebView = objc.NSClassFromString('WKWebView');
+var WKWebViewConfiguration = objc.NSClassFromString('WKWebViewConfiguration');
+var NSApplication = objc.NSClassFromString('NSApplication');
+
+class Window(NSWindow) {
+}
+
+@objc.protocol('NSWindowDelegate')
+class WindowDelegate(NSObject) {
+	def windowDidResize_(var n) {
+	}
+}
+
+class WindowController(NSWindowController) {
+}
+
+
+@objc.protocol('WKNavigationDelegate')
+class NavigationDelegate(NSObject) {
+	def webView_didFinishNavigation_(var a, var b) {
+	}
+}
+
+@objc.protocol('NSApplicationDelegate')
+class AppDelegate(NSObject) {
+	def applicationDidFinishLaunching_(var aNotification) {
+		self.window = Window(
+			contentRect = objc.CGRectMake(10, 10, 800, 600),
+			styleMask = objc.NSWindowStyleMaskMiniaturizable |
+					objc.NSWindowStyleMaskTitled |
+					objc.NSWindowStyleMaskClosable |
+					objc.NSWindowStyleMaskResizable,
+			backing = objc.NSBackingStoreBuffered,
+			defer = false);
+
+		self.window.setTitle_("apple.com");
+		self.windowDelegate = WindowDelegate();
+		self.window.setDelegate_(self.windowDelegate);
+		self.windowController = WindowController(window=self.window);
+		self.windowController.showWindow_(self);
+		
+		self.navigationDelegate = NavigationDelegate();
+		self.webView = WKWebView(frame = objc.CGRectMake(0, 0, 0, 0));
+		self.webView.setNavigationDelegate_(self.navigationDelegate);
+		var url = NSURL.URLWithString_('https://www.apple.com');
+		var request = NSURLRequest.requestWithURL_(url);
+		self.webView.loadRequest_(request);
+		self.window.contentView().addSubview_(self.webView);
+		self.webView.setTranslatesAutoresizingMaskIntoConstraints_(false);
+
+		var constraint;
+
+		constraint = NSLayoutConstraint.
+				constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
+					self.webView,
+					objc.NSLayoutAttributeTop,
+					0,
+					self.window.contentView(),
+					objc.NSLayoutAttributeTop,
+					1,
+					0);
+		self.window.contentView().addConstraint_(constraint);
+
+		constraint = NSLayoutConstraint.
+				constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
+					self.webView,
+					objc.NSLayoutAttributeLeft,
+					0,
+					self.window.contentView(),
+					objc.NSLayoutAttributeLeft,
+					1,
+					0);
+		self.window.contentView().addConstraint_(constraint);
+
+		constraint = NSLayoutConstraint.
+				constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
+					self.webView,
+					objc.NSLayoutAttributeRight,
+					0,
+					self.window.contentView(),
+					objc.NSLayoutAttributeRight,
+					1,
+					0);
+		self.window.contentView().addConstraint_(constraint);
+
+		constraint = NSLayoutConstraint.
+				constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
+					self.webView,
+					objc.NSLayoutAttributeBottom,
+					0,
+					self.window.contentView(),
+					objc.NSLayoutAttributeBottom,
+					1,
+					0);
+		self.window.contentView().addConstraint_(constraint);
+
+		self.windowController.showWindow_(self.windowController);
+	}
+	
+	def applicationShouldTerminateAfterLastWindowClosed_(var app) {
+		return true;
+	}
+}
+
+var delegate = AppDelegate();
+var app = NSApplication.sharedApplication();
+app.setDelegate_(delegate);
+app.run();
